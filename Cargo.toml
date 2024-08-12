@@ -1,3 +1,6 @@
+[workspace]
+members = ["protos"]
+
 [package]
 name = "versioning-GRPC"
 version = "0.1.0"
