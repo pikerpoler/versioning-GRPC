@@ -1,8 +1,8 @@
 syntax = "proto3";
+
 package API.V2;
 
 import "google/api/field_behavior.proto";
-
 
 service VectorService {
       // prints the vectors and the ID
@@ -31,7 +31,7 @@ message PrintResponse {
 // The request for the `sum` operation.
 message SumRequest {
   // A vector to sum.
-   Vector vectors  = 1;
+   Vector vector  = 1;
 }
 
 message SumResponse {

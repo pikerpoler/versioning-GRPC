@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tonic = "0.9"   # or the version you are using
-prost = "0.11"  # or the version you are using
+tonic = "0.11.0"   # or the version you are using
+prost = "0.12.6"
+anyhow = "1.0.86"  # or the version you are using
+tonic-reflection = "0.11.0"
 
 [build-dependencies]
-tonic-build = "0.9"  # or the version you are using
+tonic-build = "0.11.0"  # or the version you are using

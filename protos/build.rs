@@ -1,23 +1,18 @@
-use std::{env, fs};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 const PROTO_DIR: &str = "src/vector_service";
 const THIRD_PARTY_DIR: &str = "src"; // Update as needed
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let versions = [
-        "V1",
-        "V2",
-    ];
+    let versions = ["V1", "V2"];
     for version in versions {
         // directory the main .proto file resides in
         let file_name = format!("{version}.proto");
         let proto_path = Path::new(PROTO_DIR).join(file_name);
         println!("path : {proto_path:?}");
 
-        let include_dirs = [Path::new(PROTO_DIR),
-            Path::new(THIRD_PARTY_DIR),
-        ];
+        let include_dirs = [Path::new(PROTO_DIR), Path::new(THIRD_PARTY_DIR)];
 
         println!("include: {include_dirs:?}");
 
@@ -33,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .compile(&[proto_path], &include_dirs)?;
     }
     // remove unneeded google.api.rs file post-compile
-    let google_api_path: &Path = "./src/engine/grpc/google.api.rs".as_ref();
+    let google_api_path: &Path = "protos/src/google.api.rs".as_ref();
     if fs::metadata(google_api_path).is_ok() {
         fs::remove_file(google_api_path).unwrap()
     }

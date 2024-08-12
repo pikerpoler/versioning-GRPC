@@ -7,11 +7,13 @@ import "google/api/field_behavior.proto";
 service VectorService {
       // prints the vectors and the ID
       rpc Print(PrintRequest) returns (PrintResponse) {
+
       }
 
       // prints the sum of a vector and return the sum to the user
       rpc Sum(SumRequest) returns (SumResponse) {
-            }
+
+      }
 }
 
 
@@ -31,7 +33,7 @@ message PrintResponse {
 // The request for the `sum` operation.
 message SumRequest {
   // A vector to sum.
-   Vector vectors  = 1;
+   Vector vector  = 1;
 }
 
 message SumResponse {
