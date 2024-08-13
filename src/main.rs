@@ -1,4 +1,5 @@
-use protos::{serve, VectorHandler};
+use protos::VectorHandler;
+use versioning_grpc::serve;
 
 #[tokio::main]
 async fn main() {
@@ -12,11 +13,12 @@ async fn main() {
 #[cfg(test)]
 mod tests {
 
-    use protos::{serve, VectorHandler};
     use std::time::Duration;
     use tokio::time::sleep;
     use tonic::transport::Channel;
 
+    use protos::VectorHandler;
+    use versioning_grpc::serve;
     #[derive(Clone)]
     // Define the Client struct with versioned clients
     struct MultiVersionedClient {

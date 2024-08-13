@@ -22,9 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tonic_build::configure()
             .protoc_arg("--experimental_allow_proto3_optional")
             .out_dir(out_dir)
-            .file_descriptor_set_path(
-                original_out_dir.join(format!("vector_service.{version}.bin")),
-            )
+            .file_descriptor_set_path(original_out_dir.join(format!("api.{version}.bin")))
             .compile(&[proto_path], &include_dirs)?;
     }
     // remove unneeded google.api.rs file post-compile
