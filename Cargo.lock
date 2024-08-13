@@ -628,11 +628,9 @@ dependencies = [
 name = "protos"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "prost",
  "tonic",
  "tonic-build",
- "tonic-reflection",
 ]
 
 [[package]]

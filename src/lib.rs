@@ -1,4 +1,3 @@
-use anyhow;
 use anyhow::Context;
 
 use protos::{SupportedVersion, VectorHandler, VersionedVectorServiceServer};

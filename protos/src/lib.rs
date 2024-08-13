@@ -1,19 +1,110 @@
 use tonic::async_trait;
+use tonic::transport::Channel;
 
 #[path = "api.v1.rs"]
 #[rustfmt::skip]
-pub mod api_v1;
+mod api_v1;
 
 #[path = "api.v2.rs"]
 #[rustfmt::skip]
-pub mod api_v2;
+mod api_v2;
 
 pub enum SupportedVersion {
     V1,
     V2,
 }
 
-mod api_versions {
+#[derive(Clone)]
+// Define the Client struct with versioned clients
+pub struct MultiVersionedClient {
+    v1: api_v1::vector_service_client::VectorServiceClient<Channel>,
+    v2: api_v2::vector_service_client::VectorServiceClient<Channel>,
+}
+
+impl MultiVersionedClient {
+    pub async fn new(port: u16) -> Result<Self, Box<dyn std::error::Error>> {
+        let v1 = api_v1::vector_service_client::VectorServiceClient::connect(format!(
+            "http://localhost:{}",
+            port
+        ))
+        .await?;
+        let v2 = api_v2::vector_service_client::VectorServiceClient::connect(format!(
+            "http://localhost:{}",
+            port
+        ))
+        .await?;
+
+        Ok(MultiVersionedClient { v1, v2 })
+    }
+    pub async fn print_v1(&self, request: PrintRequest) -> PrintResponse {
+        VectorService::<api_versions::V1>::print(self, request).await
+    }
+    pub async fn print_v2(&self, request: PrintRequest) -> PrintResponse {
+        VectorService::<api_versions::V2>::print(self, request).await
+    }
+    pub async fn sum_v1(&self, request: SumRequest) -> SumResponse {
+        VectorService::<api_versions::V1>::sum(self, request).await
+    }
+    pub async fn sum_v2(&self, request: SumRequest) -> SumResponse {
+        VectorService::<api_versions::V2>::sum(self, request).await
+    }
+}
+
+#[async_trait]
+impl VectorService<api_versions::V1> for MultiVersionedClient {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let inner_request = request.to_v1();
+        let inner_response = self
+            .v1
+            .clone()
+            .print(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        PrintResponse::from_v1(inner_response)
+    }
+
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let inner_request = request.to_v1();
+        let inner_response = self
+            .v1
+            .clone()
+            .sum(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        SumResponse::from_v1(inner_response)
+    }
+}
+
+#[async_trait]
+impl VectorService<api_versions::V2> for MultiVersionedClient {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let inner_request = request.to_v2();
+        let inner_response = self
+            .v2
+            .clone()
+            .print(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        PrintResponse::from_v2(inner_response)
+    }
+
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let inner_request = request.to_v2();
+        let inner_response = self
+            .v2
+            .clone()
+            .sum(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        SumResponse::from_v2(inner_response)
+    }
+}
+
+pub mod api_versions {
     pub struct V1;
     pub struct V2;
 }
@@ -41,26 +132,31 @@ pub struct VectorHandler {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Vector {
     pub id: String,
     pub values: Vec<f32>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrintRequest {
     pub vector: Option<Vector>,
 }
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrintResponse {
     pub printed_count: u32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct SumRequest {
     pub vector: Option<Vector>,
 }
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct SumResponse {
     pub sum: f32,
 }
-
 
 impl Vector {
     pub fn to_v1(&self) -> api_v1::Vector {
@@ -160,24 +256,16 @@ impl SumRequest {
 
 impl SumResponse {
     pub fn to_v1(&self) -> api_v1::SumResponse {
-        api_v1::SumResponse {
-            sum: self.sum,
-        }
+        api_v1::SumResponse { sum: self.sum }
     }
     pub fn to_v2(&self) -> api_v2::SumResponse {
-        api_v2::SumResponse {
-            sum: self.sum,
-        }
+        api_v2::SumResponse { sum: self.sum }
     }
     pub fn from_v1(response: api_v1::SumResponse) -> SumResponse {
-        SumResponse {
-            sum: response.sum,
-        }
+        SumResponse { sum: response.sum }
     }
     pub fn from_v2(response: api_v2::SumResponse) -> SumResponse {
-        SumResponse {
-            sum: response.sum,
-        }
+        SumResponse { sum: response.sum }
     }
 }
 
@@ -188,8 +276,8 @@ pub trait VectorService<V> {
 }
 
 #[async_trait]
-impl VectorService<api_versions::V1> for VectorHandler{
-    async fn print(&self, request: PrintRequest) -> PrintResponse{
+impl VectorService<api_versions::V1> for VectorHandler {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
         let name = &self.name;
         let vector = request.vector;
         println!("{name} V1 print: {vector:?}");
@@ -198,7 +286,7 @@ impl VectorService<api_versions::V1> for VectorHandler{
         };
         PrintResponse::from_v1(result)
     }
-    async fn sum(&self, request: SumRequest) -> SumResponse{
+    async fn sum(&self, request: SumRequest) -> SumResponse {
         let name = &self.name;
         let vector = request.vector;
         let sum: f32 = match vector {
@@ -212,8 +300,8 @@ impl VectorService<api_versions::V1> for VectorHandler{
 }
 
 #[async_trait]
-impl VectorService<api_versions::V2> for VectorHandler{
-    async fn print(&self, request: PrintRequest) -> PrintResponse{
+impl VectorService<api_versions::V2> for VectorHandler {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
         let name = &self.name;
         let vector = request.vector;
         println!("{name} V2 print: {vector:?}");
@@ -222,7 +310,7 @@ impl VectorService<api_versions::V2> for VectorHandler{
         };
         PrintResponse::from_v2(result)
     }
-    async fn sum(&self, request: SumRequest) -> SumResponse{
+    async fn sum(&self, request: SumRequest) -> SumResponse {
         let name = &self.name;
         let vector = request.vector;
         let sum: f32 = match vector {
