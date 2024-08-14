@@ -207,7 +207,9 @@ impl PrintRequest {
         }
     }
 }
-
+// TODO: impl From<> for <struct>
+// TODO: unbreaking changes:adding fields
+// TODO: breaking changes: changing integer types, fields, removing stuff.. same name different type
 impl PrintResponse {
     pub fn to_v1(&self) -> api_v1::PrintResponse {
         api_v1::PrintResponse {
@@ -281,10 +283,9 @@ impl VectorService<api_versions::V1> for VectorHandler {
         let name = &self.name;
         let vector = request.vector;
         println!("{name} V1 print: {vector:?}");
-        let result = api_v1::PrintResponse {
+        PrintResponse {
             printed_count: vector.iter().len() as u32,
-        };
-        PrintResponse::from_v1(result)
+        }
     }
     async fn sum(&self, request: SumRequest) -> SumResponse {
         let name = &self.name;
@@ -294,8 +295,7 @@ impl VectorService<api_versions::V1> for VectorHandler {
             None => 0_f32,
         };
         println!("{name} V1 sum: {sum:?}");
-        let result = api_v1::SumResponse { sum };
-        SumResponse::from_v1(result)
+        SumResponse { sum }
     }
 }
 
@@ -305,10 +305,9 @@ impl VectorService<api_versions::V2> for VectorHandler {
         let name = &self.name;
         let vector = request.vector;
         println!("{name} V2 print: {vector:?}");
-        let result = api_v2::PrintResponse {
+        PrintResponse {
             printed_count: vector.iter().len() as u32,
-        };
-        PrintResponse::from_v2(result)
+        }
     }
     async fn sum(&self, request: SumRequest) -> SumResponse {
         let name = &self.name;
@@ -318,8 +317,7 @@ impl VectorService<api_versions::V2> for VectorHandler {
             None => 0_f32,
         };
         println!("{name} V2 sum: {sum:?}");
-        let result = api_v2::SumResponse { sum };
-        SumResponse::from_v2(result)
+        SumResponse { sum }
     }
 }
 
