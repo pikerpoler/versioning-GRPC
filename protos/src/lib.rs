@@ -1,5 +1,5 @@
-use tonic::async_trait;
 use tonic::transport::Channel;
+use tonic::{async_trait, IntoRequest};
 
 #[path = "api.v1.rs"]
 #[rustfmt::skip]
@@ -9,6 +9,7 @@ mod api_v1;
 #[rustfmt::skip]
 mod api_v2;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SupportedVersion {
     V1,
     V2,
@@ -37,21 +38,21 @@ impl MultiVersionedClient {
         Ok(MultiVersionedClient { v1, v2 })
     }
     pub async fn print_v1(&self, request: PrintRequest) -> PrintResponse {
-        VectorService::<api_versions::V1>::print(self, request).await
+        VectorService::<1>::print(self, request).await
     }
     pub async fn print_v2(&self, request: PrintRequest) -> PrintResponse {
-        VectorService::<api_versions::V2>::print(self, request).await
+        VectorService::<2>::print(self, request).await
     }
     pub async fn sum_v1(&self, request: SumRequest) -> SumResponse {
-        VectorService::<api_versions::V1>::sum(self, request).await
+        VectorService::<1>::sum(self, request).await
     }
     pub async fn sum_v2(&self, request: SumRequest) -> SumResponse {
-        VectorService::<api_versions::V2>::sum(self, request).await
+        VectorService::<2>::sum(self, request).await
     }
 }
 
 #[async_trait]
-impl VectorService<api_versions::V1> for MultiVersionedClient {
+impl VectorService<1> for MultiVersionedClient {
     async fn print(&self, request: PrintRequest) -> PrintResponse {
         let inner_request = request.to_v1();
         let inner_response = self
@@ -78,7 +79,7 @@ impl VectorService<api_versions::V1> for MultiVersionedClient {
 }
 
 #[async_trait]
-impl VectorService<api_versions::V2> for MultiVersionedClient {
+impl VectorService<2> for MultiVersionedClient {
     async fn print(&self, request: PrintRequest) -> PrintResponse {
         let inner_request = request.to_v2();
         let inner_response = self
@@ -105,31 +106,34 @@ impl VectorService<api_versions::V2> for MultiVersionedClient {
 }
 
 pub mod api_versions {
-    pub struct V1;
-    pub struct V2;
+    pub const V1: u8 = 1;
+    pub const V2: u8 = 2;
 }
 pub enum VersionedVectorServiceServer {
-    V1(api_v1::vector_service_server::VectorServiceServer<VectorHandler>),
-    V2(api_v2::vector_service_server::VectorServiceServer<VectorHandler>),
+    V1(
+        api_v1::vector_service_server::VectorServiceServer<
+            Box<dyn api_v1::vector_service_server::VectorService>,
+        >,
+    ),
+    V2(
+        api_v2::vector_service_server::VectorServiceServer<
+            Box<dyn api_v2::vector_service_server::VectorService>,
+        >,
+    ),
 }
 
 impl VersionedVectorServiceServer {
-    pub fn new_from(service: VectorHandler, version: SupportedVersion) -> Self {
-        // let boxed_service= Box::new(service);
-        match version {
-            SupportedVersion::V1 => VersionedVectorServiceServer::V1(
-                api_v1::vector_service_server::VectorServiceServer::new(service),
-            ),
-            SupportedVersion::V2 => VersionedVectorServiceServer::V2(
-                api_v2::vector_service_server::VectorServiceServer::new(service),
-            ),
-        }
+    pub fn new_v1(service: Box<dyn api_v1::vector_service_server::VectorService>) -> Self {
+        VersionedVectorServiceServer::V1(api_v1::vector_service_server::VectorServiceServer::new(
+            service,
+        ))
     }
-}
 
-#[derive(Clone)]
-pub struct VectorHandler {
-    pub name: String,
+    pub fn new_v2(service: Box<dyn api_v2::vector_service_server::VectorService>) -> Self {
+        VersionedVectorServiceServer::V2(api_v2::vector_service_server::VectorServiceServer::new(
+            service,
+        ))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -272,63 +276,22 @@ impl SumResponse {
 }
 
 #[async_trait]
-pub trait VectorService<V> {
+pub trait VectorService<const SV: u8> {
     async fn print(&self, request: PrintRequest) -> PrintResponse;
     async fn sum(&self, request: SumRequest) -> SumResponse;
 }
 
 #[async_trait]
-impl VectorService<api_versions::V1> for VectorHandler {
-    async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        println!("{name} V1 print: {vector:?}");
-        PrintResponse {
-            printed_count: vector.iter().len() as u32,
-        }
-    }
-    async fn sum(&self, request: SumRequest) -> SumResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        let sum: f32 = match vector {
-            Some(vector) => vector.values.into_iter().sum(),
-            None => 0_f32,
-        };
-        println!("{name} V1 sum: {sum:?}");
-        SumResponse { sum }
-    }
-}
-
-#[async_trait]
-impl VectorService<api_versions::V2> for VectorHandler {
-    async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        println!("{name} V2 print: {vector:?}");
-        PrintResponse {
-            printed_count: vector.iter().len() as u32,
-        }
-    }
-    async fn sum(&self, request: SumRequest) -> SumResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        let sum: f32 = match vector {
-            Some(vector) => vector.values.into_iter().sum(),
-            None => 0_f32,
-        };
-        println!("{name} V2 sum: {sum:?}");
-        SumResponse { sum }
-    }
-}
-
-#[async_trait]
-impl api_v1::vector_service_server::VectorService for VectorHandler {
+impl<T> api_v1::vector_service_server::VectorService for T
+where
+    T: VectorService<1> + std::marker::Sync + std::marker::Send + 'static,
+{
     async fn print(
         &self,
         request: tonic::Request<api_v1::PrintRequest>,
     ) -> Result<tonic::Response<api_v1::PrintResponse>, tonic::Status> {
         let inner_request = PrintRequest::from_v1(request.into_inner());
-        let inner_response = VectorService::<api_versions::V1>::print(self, inner_request).await;
+        let inner_response = VectorService::<1>::print(self, inner_request).await;
         Ok(tonic::Response::new(inner_response.to_v1()))
     }
     async fn sum(
@@ -336,19 +299,37 @@ impl api_v1::vector_service_server::VectorService for VectorHandler {
         request: tonic::Request<api_v1::SumRequest>,
     ) -> Result<tonic::Response<api_v1::SumResponse>, tonic::Status> {
         let inner_request = SumRequest::from_v1(request.into_inner());
-        let inner_response = VectorService::<api_versions::V1>::sum(self, inner_request).await;
+        let inner_response = VectorService::<1>::sum(self, inner_request).await;
         Ok(tonic::Response::new(inner_response.to_v1()))
     }
 }
 
 #[async_trait]
-impl api_v2::vector_service_server::VectorService for VectorHandler {
+impl VectorService<1> for Box<dyn api_v1::vector_service_server::VectorService + 'static> {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let inner = request.to_v1().into_request();
+        let response = self.as_ref().print(inner).await.unwrap().into_inner();
+        PrintResponse::from_v1(response)
+    }
+
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let inner = request.to_v1().into_request();
+        let response = self.as_ref().sum(inner).await.unwrap().into_inner();
+        SumResponse::from_v1(response)
+    }
+}
+
+#[async_trait]
+impl<T> api_v2::vector_service_server::VectorService for T
+where
+    T: VectorService<2> + std::marker::Sync + std::marker::Send + 'static,
+{
     async fn print(
         &self,
         request: tonic::Request<api_v2::PrintRequest>,
     ) -> Result<tonic::Response<api_v2::PrintResponse>, tonic::Status> {
         let inner_request = PrintRequest::from_v2(request.into_inner());
-        let inner_response = VectorService::<api_versions::V2>::print(self, inner_request).await;
+        let inner_response = VectorService::<2>::print(self, inner_request).await;
         Ok(tonic::Response::new(inner_response.to_v2()))
     }
     async fn sum(
@@ -356,7 +337,22 @@ impl api_v2::vector_service_server::VectorService for VectorHandler {
         request: tonic::Request<api_v2::SumRequest>,
     ) -> Result<tonic::Response<api_v2::SumResponse>, tonic::Status> {
         let inner_request = SumRequest::from_v2(request.into_inner());
-        let inner_response = VectorService::<api_versions::V2>::sum(self, inner_request).await;
+        let inner_response = VectorService::<2>::sum(self, inner_request).await;
         Ok(tonic::Response::new(inner_response.to_v2()))
+    }
+}
+
+#[async_trait]
+impl VectorService<2> for Box<dyn api_v2::vector_service_server::VectorService + 'static> {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let inner = request.to_v2().into_request();
+        let response = self.as_ref().print(inner).await.unwrap().into_inner();
+        PrintResponse::from_v2(response)
+    }
+
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let inner = request.to_v2().into_request();
+        let response = self.as_ref().sum(inner).await.unwrap().into_inner();
+        SumResponse::from_v2(response)
     }
 }

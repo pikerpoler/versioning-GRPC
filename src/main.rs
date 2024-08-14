@@ -1,5 +1,4 @@
-use protos::VectorHandler;
-use versioning_grpc::serve;
+use versioning_grpc::{serve, VectorHandler};
 
 #[tokio::main]
 async fn main() {
@@ -17,9 +16,8 @@ mod tests {
     use std::time::Duration;
     use tokio::time::sleep;
 
-    use protos::api_versions;
-    use protos::VectorHandler;
-    use versioning_grpc::serve;
+    use versioning_grpc::{serve, VectorHandler};
+
 
     #[tokio::test]
     async fn simple_test() {
@@ -57,10 +55,10 @@ mod tests {
         let print_result1 = client.print_v1(print_request_1).await; // VectorService::<api_versions::V1>::print(&client,print_request_1).await;
         println!("print result 1: {print_result1:?}");
         let print_result2 =
-            VectorService::<api_versions::V2>::print(&client, print_request_2).await;
+            VectorService::<2>::print(&client, print_request_2).await;
         println!("print result 2: {print_result2:?}");
 
-        let sum_result1 = VectorService::<api_versions::V1>::sum(&client, sum_request_1).await;
+        let sum_result1 = VectorService::<2>::sum(&client, sum_request_1).await;
         println!("sun result 1: {sum_result1:?}");
         let sum_result2 = client.sum_v2(sum_request_2).await;
         println!("sun result 2: {sum_result2:?}");

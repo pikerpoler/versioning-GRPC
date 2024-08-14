@@ -1,7 +1,8 @@
 use anyhow::Context;
 
-use protos::{SupportedVersion, VectorHandler, VersionedVectorServiceServer};
+use protos::{PrintRequest, PrintResponse, SumRequest, SumResponse, VectorService, VersionedVectorServiceServer};
 use std::net::SocketAddr;
+use tonic::async_trait;
 use tonic::transport::Server;
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
 
@@ -37,8 +38,56 @@ pub async fn serve(port: u16, inner_service: VectorHandler) -> anyhow::Result<()
         .build()?;
 
     let service_server_list = vec![
-        VersionedVectorServiceServer::new_from(inner_service.clone(), SupportedVersion::V1),
-        VersionedVectorServiceServer::new_from(inner_service, SupportedVersion::V2),
+        VersionedVectorServiceServer::new_v1(Box::new(inner_service.clone())),
+        VersionedVectorServiceServer::new_v2(Box::new(inner_service.clone())),
     ];
     export_grpc_services(bind_addr, reflection_server, service_server_list).await
+}
+
+#[derive(Clone)]
+pub struct VectorHandler {
+    pub name: String,
+}
+#[async_trait]
+impl VectorService<1> for VectorHandler {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let name = &self.name;
+        let vector = request.vector;
+        println!("{name} V1 print: {vector:?}");
+        PrintResponse {
+            printed_count: vector.iter().len() as u32,
+        }
+    }
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let name = &self.name;
+        let vector = request.vector;
+        let sum: f32 = match vector {
+            Some(vector) => vector.values.into_iter().sum(),
+            None => 0_f32,
+        };
+        println!("{name} V1 sum: {sum:?}");
+        SumResponse { sum }
+    }
+}
+
+#[async_trait]
+impl VectorService<2> for VectorHandler {
+    async fn print(&self, request: PrintRequest) -> PrintResponse {
+        let name = &self.name;
+        let vector = request.vector;
+        println!("{name} V2 print: {vector:?}");
+        PrintResponse {
+            printed_count: vector.iter().len() as u32,
+        }
+    }
+    async fn sum(&self, request: SumRequest) -> SumResponse {
+        let name = &self.name;
+        let vector = request.vector;
+        let sum: f32 = match vector {
+            Some(vector) => vector.values.into_iter().sum(),
+            None => 0_f32,
+        };
+        println!("{name} V2 sum: {sum:?}");
+        SumResponse { sum }
+    }
 }
