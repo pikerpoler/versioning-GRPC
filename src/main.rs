@@ -11,8 +11,7 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-
-    use protos::{MultiVersionedClient, VectorService};
+    use protos::MultiVersionedClient;
     use std::time::Duration;
     use tokio::time::sleep;
 
@@ -49,16 +48,13 @@ mod tests {
         let sum_request_1 = protos::SumRequest { vector: Some(vec1) };
         let sum_request_2 = protos::SumRequest { vector: Some(vec2) };
 
-        // note that we can call a method for client in two ways.
-        // VectorService::<api_versions::V2>::print  or client.print_v2(...
-        // should we support both?
         let print_result1 = client.print_v1(print_request_1).await; // VectorService::<api_versions::V1>::print(&client,print_request_1).await;
         println!("print result 1: {print_result1:?}");
         let print_result2 =
-            VectorService::<2>::print(&client, print_request_2).await;
+            client.print_v2(print_request_2).await;
         println!("print result 2: {print_result2:?}");
 
-        let sum_result1 = VectorService::<2>::sum(&client, sum_request_1).await;
+        let sum_result1 = client.sum_v1(sum_request_1).await;
         println!("sun result 1: {sum_result1:?}");
         let sum_result2 = client.sum_v2(sum_request_2).await;
         println!("sun result 2: {sum_result2:?}");

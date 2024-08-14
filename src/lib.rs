@@ -49,11 +49,11 @@ pub struct VectorHandler {
     pub name: String,
 }
 #[async_trait]
-impl VectorService<1> for VectorHandler {
+impl VectorService for VectorHandler {
     async fn print(&self, request: PrintRequest) -> PrintResponse {
         let name = &self.name;
         let vector = request.vector;
-        println!("{name} V1 print: {vector:?}");
+        println!("{name} VectorService print: {vector:?}");
         PrintResponse {
             printed_count: vector.iter().len() as u32,
         }
@@ -65,29 +65,7 @@ impl VectorService<1> for VectorHandler {
             Some(vector) => vector.values.into_iter().sum(),
             None => 0_f32,
         };
-        println!("{name} V1 sum: {sum:?}");
-        SumResponse { sum }
-    }
-}
-
-#[async_trait]
-impl VectorService<2> for VectorHandler {
-    async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        println!("{name} V2 print: {vector:?}");
-        PrintResponse {
-            printed_count: vector.iter().len() as u32,
-        }
-    }
-    async fn sum(&self, request: SumRequest) -> SumResponse {
-        let name = &self.name;
-        let vector = request.vector;
-        let sum: f32 = match vector {
-            Some(vector) => vector.values.into_iter().sum(),
-            None => 0_f32,
-        };
-        println!("{name} V2 sum: {sum:?}");
+        println!("{name} VectorService sum: {sum:?}");
         SumResponse { sum }
     }
 }

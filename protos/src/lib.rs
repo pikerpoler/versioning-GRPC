@@ -38,62 +38,40 @@ impl MultiVersionedClient {
         Ok(MultiVersionedClient { v1, v2 })
     }
     pub async fn print_v1(&self, request: PrintRequest) -> PrintResponse {
-        VectorService::<1>::print(self, request).await
+        let inner_request = api_v1::PrintRequest::from(request);
+        let inner_response = self
+            .v1
+            .clone()
+            .print(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        PrintResponse::from(inner_response)
     }
     pub async fn print_v2(&self, request: PrintRequest) -> PrintResponse {
-        VectorService::<2>::print(self, request).await
+        let inner_request = api_v2::PrintRequest::from(request);
+        let inner_response = self
+            .v2
+            .clone()
+            .print(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        PrintResponse::from(inner_response)
     }
     pub async fn sum_v1(&self, request: SumRequest) -> SumResponse {
-        VectorService::<1>::sum(self, request).await
+        let inner_request = api_v1::SumRequest::from(request);
+        let inner_response = self
+            .v1
+            .clone()
+            .sum(inner_request)
+            .await
+            .unwrap()
+            .into_inner();
+        SumResponse::from(inner_response)
     }
     pub async fn sum_v2(&self, request: SumRequest) -> SumResponse {
-        VectorService::<2>::sum(self, request).await
-    }
-}
-
-#[async_trait]
-impl VectorService<1> for MultiVersionedClient {
-    async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let inner_request = request.to_v1();
-        let inner_response = self
-            .v1
-            .clone()
-            .print(inner_request)
-            .await
-            .unwrap()
-            .into_inner();
-        PrintResponse::from_v1(inner_response)
-    }
-
-    async fn sum(&self, request: SumRequest) -> SumResponse {
-        let inner_request = request.to_v1();
-        let inner_response = self
-            .v1
-            .clone()
-            .sum(inner_request)
-            .await
-            .unwrap()
-            .into_inner();
-        SumResponse::from_v1(inner_response)
-    }
-}
-
-#[async_trait]
-impl VectorService<2> for MultiVersionedClient {
-    async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let inner_request = request.to_v2();
-        let inner_response = self
-            .v2
-            .clone()
-            .print(inner_request)
-            .await
-            .unwrap()
-            .into_inner();
-        PrintResponse::from_v2(inner_response)
-    }
-
-    async fn sum(&self, request: SumRequest) -> SumResponse {
-        let inner_request = request.to_v2();
+        let inner_request = api_v2::SumRequest::from(request);
         let inner_response = self
             .v2
             .clone()
@@ -101,7 +79,7 @@ impl VectorService<2> for MultiVersionedClient {
             .await
             .unwrap()
             .into_inner();
-        SumResponse::from_v2(inner_response)
+        SumResponse::from(inner_response)
     }
 }
 
@@ -162,26 +140,27 @@ pub struct SumResponse {
     pub sum: f32,
 }
 
-impl Vector {
-    pub fn to_v1(&self) -> api_v1::Vector {
+
+impl From<Vector> for api_v1::Vector {
+    fn from(value: Vector) -> Self {
         api_v1::Vector {
-            id: self.id.clone(),
-            values: self.values.clone(),
+            id: value.id.clone(),
+            values: value.values.clone(),
         }
     }
-    pub fn to_v2(&self) -> api_v2::Vector {
+}
+
+impl From<Vector> for api_v2::Vector {
+    fn from(value: Vector) -> Self {
         api_v2::Vector {
-            id: self.id.clone(),
-            values: self.values.clone(),
+            id: value.id.clone(),
+            values: value.values.clone(),
         }
     }
-    pub fn from_v1(vector: api_v1::Vector) -> Vector {
-        Vector {
-            id: vector.id,
-            values: vector.values,
-        }
-    }
-    pub fn from_v2(vector: api_v2::Vector) -> Vector {
+}
+
+impl From<api_v1::Vector> for Vector {
+    fn from(vector: api_v1::Vector) -> Vector {
         Vector {
             id: vector.id,
             values: vector.values,
@@ -189,94 +168,153 @@ impl Vector {
     }
 }
 
-impl PrintRequest {
-    pub fn to_v1(&self) -> api_v1::PrintRequest {
-        api_v1::PrintRequest {
-            vectors: self.vector.as_ref().map(|v| v.to_v1()),
-        }
-    }
-    pub fn to_v2(&self) -> api_v2::PrintRequest {
-        api_v2::PrintRequest {
-            vectors: self.vector.as_ref().map(|v| v.to_v2()),
-        }
-    }
-    pub fn from_v1(request: api_v1::PrintRequest) -> PrintRequest {
-        PrintRequest {
-            vector: request.vectors.map(Vector::from_v1),
-        }
-    }
-    pub fn from_v2(request: api_v2::PrintRequest) -> PrintRequest {
-        PrintRequest {
-            vector: request.vectors.map(Vector::from_v2),
+impl From<api_v2::Vector> for Vector {
+    fn from(vector: api_v2::Vector) -> Vector {
+        Vector {
+            id: vector.id,
+            values: vector.values,
         }
     }
 }
-// TODO: impl From<> for <struct>
+
+
+impl From<PrintRequest> for api_v1::PrintRequest {
+    fn from(value: PrintRequest) -> Self {
+        api_v1::PrintRequest {
+            vectors: value.vector.map(|v| v.into()), // Use Into here
+        }
+    }
+}
+
+impl From<PrintRequest> for api_v2::PrintRequest {
+    fn from(value: PrintRequest) -> Self {
+        api_v2::PrintRequest {
+            vectors: value.vector.map(|v| v.into()), // Use Into here
+        }
+    }
+}
+
+impl From<api_v1::PrintRequest> for PrintRequest {
+    fn from(request: api_v1::PrintRequest) -> PrintRequest {
+        PrintRequest {
+            vector: request.vectors.map(Vector::from),
+        }
+    }
+}
+
+impl From<api_v2::PrintRequest> for PrintRequest {
+    fn from(request: api_v2::PrintRequest) -> PrintRequest {
+        PrintRequest {
+            vector: request.vectors.map(Vector::from),
+        }
+    }
+}
+
+
+
 // TODO: unbreaking changes:adding fields
 // TODO: breaking changes: changing integer types, fields, removing stuff.. same name different type
-impl PrintResponse {
-    pub fn to_v1(&self) -> api_v1::PrintResponse {
+impl From<PrintResponse> for api_v1::PrintResponse {
+    fn from(value: PrintResponse) -> Self {
         api_v1::PrintResponse {
-            printed_count: self.printed_count,
+            printed_count: value.printed_count,
         }
     }
-    pub fn to_v2(&self) -> api_v2::PrintResponse {
+}
+
+impl From<PrintResponse> for api_v2::PrintResponse {
+    fn from(value: PrintResponse) -> Self {
         api_v2::PrintResponse {
-            printed_count: self.printed_count,
+            printed_count: value.printed_count,
         }
     }
-    pub fn from_v1(response: api_v1::PrintResponse) -> PrintResponse {
-        PrintResponse {
-            printed_count: response.printed_count,
-        }
-    }
-    pub fn from_v2(response: api_v2::PrintResponse) -> PrintResponse {
+}
+
+impl From<api_v1::PrintResponse> for PrintResponse {
+    fn from(response: api_v1::PrintResponse) -> Self {
         PrintResponse {
             printed_count: response.printed_count,
         }
     }
 }
 
-impl SumRequest {
-    pub fn to_v1(&self) -> api_v1::SumRequest {
+impl From<api_v2::PrintResponse> for PrintResponse {
+    fn from(response: api_v2::PrintResponse) -> Self {
+        PrintResponse {
+            printed_count: response.printed_count,
+        }
+    }
+}
+
+
+impl From<SumRequest> for api_v1::SumRequest {
+    fn from(value: SumRequest) -> Self {
         api_v1::SumRequest {
-            vector: self.vector.as_ref().map(|v| v.to_v1()),
-        }
-    }
-    pub fn to_v2(&self) -> api_v2::SumRequest {
-        api_v2::SumRequest {
-            vector: self.vector.as_ref().map(|v| v.to_v2()),
-        }
-    }
-    pub fn from_v1(request: api_v1::SumRequest) -> SumRequest {
-        SumRequest {
-            vector: request.vector.map(Vector::from_v1),
-        }
-    }
-    pub fn from_v2(request: api_v2::SumRequest) -> SumRequest {
-        SumRequest {
-            vector: request.vector.map(Vector::from_v2),
+            vector: value.vector.map(|v| v.into()), // Use Into here
         }
     }
 }
 
-impl SumResponse {
-    pub fn to_v1(&self) -> api_v1::SumResponse {
-        api_v1::SumResponse { sum: self.sum }
-    }
-    pub fn to_v2(&self) -> api_v2::SumResponse {
-        api_v2::SumResponse { sum: self.sum }
-    }
-    pub fn from_v1(response: api_v1::SumResponse) -> SumResponse {
-        SumResponse { sum: response.sum }
-    }
-    pub fn from_v2(response: api_v2::SumResponse) -> SumResponse {
-        SumResponse { sum: response.sum }
+impl From<SumRequest> for api_v2::SumRequest {
+    fn from(value: SumRequest) -> Self {
+        api_v2::SumRequest {
+            vector: value.vector.map(|v| v.into()), // Use Into here
+        }
     }
 }
+
+impl From<api_v1::SumRequest> for SumRequest {
+    fn from(request: api_v1::SumRequest) -> Self {
+        SumRequest {
+            vector: request.vector.map(Vector::from),
+        }
+    }
+}
+
+impl From<api_v2::SumRequest> for SumRequest {
+    fn from(request: api_v2::SumRequest) -> Self {
+        SumRequest {
+            vector: request.vector.map(Vector::from),
+        }
+    }
+}
+
+
+impl From<SumResponse> for api_v1::SumResponse {
+    fn from(value: SumResponse) -> Self {
+        api_v1::SumResponse {
+            sum: value.sum,
+        }
+    }
+}
+
+impl From<SumResponse> for api_v2::SumResponse {
+    fn from(value: SumResponse) -> Self {
+        api_v2::SumResponse {
+            sum: value.sum,
+        }
+    }
+}
+
+impl From<api_v1::SumResponse> for SumResponse {
+    fn from(response: api_v1::SumResponse) -> Self {
+        SumResponse {
+            sum: response.sum,
+        }
+    }
+}
+
+impl From<api_v2::SumResponse> for SumResponse {
+    fn from(response: api_v2::SumResponse) -> Self {
+        SumResponse {
+            sum: response.sum,
+        }
+    }
+}
+
 
 #[async_trait]
-pub trait VectorService<const SV: u8> {
+pub trait VectorService {
     async fn print(&self, request: PrintRequest) -> PrintResponse;
     async fn sum(&self, request: SumRequest) -> SumResponse;
 }
@@ -284,75 +322,75 @@ pub trait VectorService<const SV: u8> {
 #[async_trait]
 impl<T> api_v1::vector_service_server::VectorService for T
 where
-    T: VectorService<1> + std::marker::Sync + std::marker::Send + 'static,
+    T: VectorService + std::marker::Sync + std::marker::Send + 'static,
 {
     async fn print(
         &self,
         request: tonic::Request<api_v1::PrintRequest>,
     ) -> Result<tonic::Response<api_v1::PrintResponse>, tonic::Status> {
-        let inner_request = PrintRequest::from_v1(request.into_inner());
-        let inner_response = VectorService::<1>::print(self, inner_request).await;
-        Ok(tonic::Response::new(inner_response.to_v1()))
+        let inner_request = PrintRequest::from(request.into_inner());
+        let inner_response = VectorService::print(self, inner_request).await;
+        Ok(tonic::Response::new(api_v1::PrintResponse::from(inner_response)))
     }
     async fn sum(
         &self,
         request: tonic::Request<api_v1::SumRequest>,
     ) -> Result<tonic::Response<api_v1::SumResponse>, tonic::Status> {
-        let inner_request = SumRequest::from_v1(request.into_inner());
-        let inner_response = VectorService::<1>::sum(self, inner_request).await;
-        Ok(tonic::Response::new(inner_response.to_v1()))
+        let inner_request = SumRequest::from(request.into_inner());
+        let inner_response = VectorService::sum(self, inner_request).await;
+        Ok(tonic::Response::new(api_v1::SumResponse::from(inner_response)))
     }
 }
 
 #[async_trait]
-impl VectorService<1> for Box<dyn api_v1::vector_service_server::VectorService + 'static> {
+impl VectorService for Box<dyn api_v1::vector_service_server::VectorService + 'static> {
     async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let inner = request.to_v1().into_request();
+        let inner = api_v1::PrintRequest::from(request).into_request();
         let response = self.as_ref().print(inner).await.unwrap().into_inner();
-        PrintResponse::from_v1(response)
+        PrintResponse::from(response)
     }
 
     async fn sum(&self, request: SumRequest) -> SumResponse {
-        let inner = request.to_v1().into_request();
+        let inner = api_v1::SumRequest::from(request).into_request();
         let response = self.as_ref().sum(inner).await.unwrap().into_inner();
-        SumResponse::from_v1(response)
+        SumResponse::from(response)
     }
 }
 
 #[async_trait]
 impl<T> api_v2::vector_service_server::VectorService for T
 where
-    T: VectorService<2> + std::marker::Sync + std::marker::Send + 'static,
+    T: VectorService + std::marker::Sync + std::marker::Send + 'static,
 {
     async fn print(
         &self,
         request: tonic::Request<api_v2::PrintRequest>,
     ) -> Result<tonic::Response<api_v2::PrintResponse>, tonic::Status> {
-        let inner_request = PrintRequest::from_v2(request.into_inner());
-        let inner_response = VectorService::<2>::print(self, inner_request).await;
-        Ok(tonic::Response::new(inner_response.to_v2()))
+        let inner_request = PrintRequest::from(request.into_inner());
+        let inner_response = VectorService::print(self, inner_request).await;
+        Ok(tonic::Response::new(api_v2::PrintResponse::from(inner_response)))
     }
     async fn sum(
         &self,
         request: tonic::Request<api_v2::SumRequest>,
     ) -> Result<tonic::Response<api_v2::SumResponse>, tonic::Status> {
-        let inner_request = SumRequest::from_v2(request.into_inner());
-        let inner_response = VectorService::<2>::sum(self, inner_request).await;
-        Ok(tonic::Response::new(inner_response.to_v2()))
+        let inner_request = SumRequest::from(request.into_inner());
+        let inner_response = VectorService::sum(self, inner_request).await;
+        Ok(tonic::Response::new(api_v2::SumResponse::from(inner_response)))
     }
 }
 
 #[async_trait]
-impl VectorService<2> for Box<dyn api_v2::vector_service_server::VectorService + 'static> {
+impl VectorService for Box<dyn api_v2::vector_service_server::VectorService + 'static> {
     async fn print(&self, request: PrintRequest) -> PrintResponse {
-        let inner = request.to_v2().into_request();
+        let inner = api_v2::PrintRequest::from(request).into_request();
         let response = self.as_ref().print(inner).await.unwrap().into_inner();
-        PrintResponse::from_v2(response)
+        PrintResponse::from(response)
     }
 
     async fn sum(&self, request: SumRequest) -> SumResponse {
-        let inner = request.to_v2().into_request();
+        let inner = api_v2::SumRequest::from(request).into_request();
         let response = self.as_ref().sum(inner).await.unwrap().into_inner();
-        SumResponse::from_v2(response)
+        SumResponse::from(response)
     }
 }
