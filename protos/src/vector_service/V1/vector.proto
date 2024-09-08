@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+
+package API.V1;
+import "google/api/field_behavior.proto";
+
+
+message Vector {
+
+    // This is the vector's unique id.
+    string                 id                                           = 1 [
+        (google.api.field_behavior) = REQUIRED
+    ];
+
+    // This is the vector data included in the request.
+    repeated float         values                                       = 2 [
+        (google.api.field_behavior) = REQUIRED
+    ];
+
+}
