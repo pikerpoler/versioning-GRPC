@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+
+package API.V1;
+import "vector_service/V1/vector.proto";
+
+// The request for the `sum` operation.
+message SumRequest {
+    // A vector to sum.
+    Vector vector  = 1;
+}
+
+message SumResponse {
+    // The sum of the vectors.
+    float sum = 1;
+}

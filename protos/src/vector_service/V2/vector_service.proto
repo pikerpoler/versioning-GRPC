@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package API.V2;
+
+import "vector_service/V1/print_request.proto";
+import "vector_service/V2/sum_request.proto";
+
+
+service VectorService {
+      // prints the vectors and the ID
+      rpc Print(API.V1.PrintRequest) returns (API.V1.PrintResponse) {
+      }
+
+      // prints the sum of a vector and return the sum to the user
+      rpc Sum(API.V2.SumRequest) returns (API.V2.SumResponse) {
+            }
+}
+

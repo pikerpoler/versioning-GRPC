@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package API.V1;
+import "google/api/field_behavior.proto";
+import "vector_service/V1/vector.proto";
+
+
+// The request for the `print` operation.
+message PrintRequest {
+    // An array containing the vectors to print.
+    Vector vector   = 1 [
+        (google.api.field_behavior) = REQUIRED
+    ];
+}
+
+message PrintResponse {
+    // The sum of all printed.
+    uint32   printed_count = 1;
+}

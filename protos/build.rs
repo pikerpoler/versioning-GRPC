@@ -5,10 +5,10 @@ const PROTO_DIR: &str = "src/vector_service";
 const THIRD_PARTY_DIR: &str = "src"; // Update as needed
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let versions = ["V1", "V2"];
+    let versions = ["inner", "V2", "V1"];
     for version in versions {
         // directory the main .proto file resides in
-        let file_name = format!("{version}.proto");
+        let file_name = format!("{version}/vector_service.proto");
         let proto_path = Path::new(PROTO_DIR).join(file_name);
         println!("path : {proto_path:?}");
 
