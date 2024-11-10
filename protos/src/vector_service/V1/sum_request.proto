@@ -11,6 +11,6 @@ message SumRequest {
 }
 
 message SumResponse {
-    // The sum of the vectors.
+    // The sum of the vector.
     float sum = 1;
 }

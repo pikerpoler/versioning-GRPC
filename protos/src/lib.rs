@@ -59,3 +59,15 @@ pub mod vector_service {
     pub use crate::api::inner::*;
     pub use crate::wrappers::{vector_service_client, vector_service_server};
 }
+
+// these clients are what the client will actually use, and intended for showcasing.
+// actual tests should use the inner clients
+pub mod actual_clients{
+    pub mod v1{
+        include!("api.v1.rs");
+    }
+    pub mod v2{
+        pub use super::v1::*;
+        include!("api.v2.rs");
+    }
+}

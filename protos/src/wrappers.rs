@@ -25,6 +25,7 @@ macro_rules! impl_vector_service {
                 let tmp = $version::VERSION_NAME;
                 println!("rerouting print from {tmp:?}");
                 let (metadata, extensions, inner_request) = request.into_parts();
+                println!("original request recived in server: {inner_request:?}");
                 let inner_request = inner::PrintRequest::from(inner_request);
                 let request = Request::from_parts(metadata, extensions, inner_request);
                 let (metadata, response, extensions) = inner::VectorService::print(self, request)
@@ -45,6 +46,7 @@ macro_rules! impl_vector_service {
                 let tmp = $version::VERSION_NAME;
                 println!("rerouting sum from {tmp:?}");
                 let (metadata, extensions, inner_request) = request.into_parts();
+                println!("original request recived in server: {inner_request:?}");
                 let inner_request = inner::SumRequest::from(inner_request);
                 let request = Request::from_parts(metadata, extensions, inner_request);
                 let (metadata, response, extensions) =
@@ -178,10 +180,12 @@ macro_rules! delegate_client_call {
         ) -> Result<Response<inner::$response_type>, tonic::Status> {
             let request = request.into_request();
             let (metadata, extensions, inner_request) = request.into_parts();
+            
             match self {
                 $(
                 VectorServiceClient::$variant(client) => {
                     let inner_request = $version::$request_type::from(inner_request);
+                    println!("request sent from client: {inner_request:?}");
                     let request = Request::from_parts(metadata, extensions, inner_request);
                     let (metadata, inner_response, extensions) =
                         client.$function(request).await?.into_parts();
